@@ -18,6 +18,7 @@ const zod_1 = require("zod");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("../db/db");
 const config_1 = require("../config");
+const middleware_1 = require("./middleware");
 exports.userRouter = (0, express_1.Router)();
 exports.userRouter.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const inputFormat = zod_1.z.object({
@@ -77,3 +78,8 @@ exports.userRouter.post('/signin', (req, res) => __awaiter(void 0, void 0, void 
         token
     });
 }));
+exports.userRouter.get("/info", middleware_1.authMiddleware, (req, res) => {
+    res.send({
+        msg: "token is correct"
+    });
+});

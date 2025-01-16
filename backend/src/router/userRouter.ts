@@ -3,6 +3,7 @@ import {ParseStatus, z} from "zod"
 import jwt from "jsonwebtoken"
 import { UserModel } from "../db/db";
 import { JWT_SCRETE } from "../config";
+import { authMiddleware } from "./middleware";
 export const userRouter = Router()
 
 userRouter.post('/signup',async (req,res)=>{
@@ -71,3 +72,6 @@ userRouter.post('/signin',async(req,res)=>{
     })
 })
 
+userRouter.get("/info",authMiddleware,(req,res)=>{
+    
+})
