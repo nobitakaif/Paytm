@@ -19,6 +19,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = require("../db/db");
 const config_1 = require("../config");
 const middleware_1 = require("./middleware");
+const bcrypt_1 = __importDefault(require("bcrypt"));
 exports.userRouter = (0, express_1.Router)();
 exports.userRouter.post('/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const inputFormat = zod_1.z.object({
@@ -32,10 +33,16 @@ exports.userRouter.post('/signup', (req, res) => __awaiter(void 0, void 0, void 
         });
         return;
     }
+    const hashedPassword = yield bcrypt_1.default.hash(isValid.data.password, 5);
     try {
-        yield db_1.UserModel.create({
+        const user = yield db_1.UserModel.create({
             username: isValid.data.username,
-            password: isValid.data.password
+            password: hashedPassword
+        });
+        const userId = user._id;
+        yield db_1.AccountModel.create({
+            userId,
+            balance: 1 + Math.random() * 100000
         });
         res.status(200).send({
             msg: "you're are successfully logged-in"
@@ -63,11 +70,18 @@ exports.userRouter.post('/signin', (req, res) => __awaiter(void 0, void 0, void 
     const password = req.body.password;
     const response = yield db_1.UserModel.findOne({
         username,
-        password
+        // password
     });
     if (!response) {
         res.status(400).send({
             msg: "creadential incorredt"
+        });
+        return;
+    }
+    const passwordCheck = yield bcrypt_1.default.compare(password, response === null || response === void 0 ? void 0 : response.password);
+    if (!passwordCheck) {
+        res.status(404).send({
+            msg: "password incorrect"
         });
         return;
     }
@@ -78,8 +92,30 @@ exports.userRouter.post('/signin', (req, res) => __awaiter(void 0, void 0, void 
         token
     });
 }));
-exports.userRouter.get("/info", middleware_1.authMiddleware, (req, res) => {
-    res.send({
-        msg: "token is correct"
+exports.userRouter.put("/update", middleware_1.authMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const inputFormat = zod_1.z.object({
+        username: zod_1.z.string().min(4).max(40).optional(),
+        password: zod_1.z.string().min(8).max(80).optional()
     });
-});
+    const isSafe = inputFormat.safeParse(req.body);
+    if (!isSafe.success) {
+        res.status(400).send({
+            msg: "wrong input format"
+        });
+        return;
+    }
+    try {
+        yield db_1.UserModel.updateOne({
+            // @ts-ignore
+            id: req.id
+        }, req.body);
+        res.status(200).send({
+            msg: "user updated"
+        });
+    }
+    catch (e) {
+        res.status(500).send({
+            msg: "couldn't updated"
+        });
+    }
+}));

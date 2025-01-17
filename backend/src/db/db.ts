@@ -6,6 +6,11 @@ const UserSchema = new Schema({
     password : {type:String , required:true}
 })
 
-export const UserModel = model('User',UserSchema)
+const accountSchema = new Schema({
+    userId : {type:Schema.Types.ObjectId,ref:'UserSchema',require:true},
+    balance :{type:Number, require:true}
 
+})
+export const UserModel = model('User',UserSchema)
+export const AccountModel = model('Account',accountSchema)
 const newUser = new UserModel({username:"nobtia",password:"nobtia"})

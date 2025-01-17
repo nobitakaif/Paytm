@@ -1,9 +1,10 @@
 import { Router } from "express";
 import {ParseStatus, z} from "zod"
 import jwt from "jsonwebtoken"
-import { UserModel } from "../db/db";
+import { AccountModel, UserModel } from "../db/db";
 import { JWT_SCRETE } from "../config";
 import { authMiddleware } from "./middleware";
+import bcrypt from "bcrypt"
 export const userRouter = Router()
 
 userRouter.post('/signup',async (req,res)=>{
@@ -20,11 +21,16 @@ userRouter.post('/signup',async (req,res)=>{
         })
         return
     }
-    
+    const hashedPassword = await bcrypt.hash(isValid.data.password,5)
     try{
-        await UserModel.create({
+        const user = await UserModel.create({
             username:isValid.data.username,
-            password:isValid.data.password
+            password:hashedPassword
+        })
+        const userId = user._id
+        await AccountModel.create({
+            userId,
+            balance:1+ Math.random()*100000
         })
         res.status(200).send({
             msg:"you're are successfully logged-in"
@@ -55,11 +61,18 @@ userRouter.post('/signin',async(req,res)=>{
 
     const response = await UserModel.findOne({
         username,
-        password
+        // password
     })
     if(!response){
         res.status(400).send({
             msg:"creadential incorredt"
+        })
+        return 
+    }
+    const passwordCheck = await bcrypt.compare(password,response?.password)
+    if(!passwordCheck){
+        res.status(404).send({
+            msg:"password incorrect"
         })
         return 
     }
@@ -72,6 +85,32 @@ userRouter.post('/signin',async(req,res)=>{
     })
 })
 
-userRouter.get("/info",authMiddleware,(req,res)=>{
+userRouter.put("/update",authMiddleware,async(req,res)=>{
+    const inputFormat = z.object({
+        username : z.string().min(4).max(40).optional(),
+        password : z.string().min(8).max(80).optional()
+    })
+
+    const isSafe = inputFormat.safeParse(req.body)
+    if(!isSafe.success){
+        res.status(400).send({
+            msg:"wrong input format"
+        })
+        return 
+    }
+    
+    try{  
+        await UserModel.updateOne({
+        // @ts-ignore
+             id:req.id
+        },req.body)
+        res.status(200).send({
+            msg:"user updated"
+        })
+    }catch(e){
+        res.status(500).send({
+            msg:"couldn't updated"
+        })
+    }
     
 })
